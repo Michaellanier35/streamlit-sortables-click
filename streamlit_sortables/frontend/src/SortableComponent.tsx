@@ -30,7 +30,8 @@ type Direction = 'horizontal' | 'vertical';
 interface StreamlitArguments {
   direction?: Direction,
   items: ContainerDescription[],
-  customStyle?: string
+  customStyle?: string,
+  returnEvents?: boolean
 }
 
 interface ContainerDescription {
@@ -67,7 +68,8 @@ function Container(props: ContainerProps) {
 
 interface SortableComponentProps {
   direction?: Direction,
-  items: ContainerDescription[]
+  items: ContainerDescription[],
+  returnEvents?: boolean
 }
 
 function SortableComponent(props: SortableComponentProps) {
@@ -185,7 +187,7 @@ function SortableComponent(props: SortableComponentProps) {
   }
 
   function handleItemClick(header: string, item: string) {
-    if (isDragging) {
+    if (isDragging || !props.returnEvents) {
       return;
     }
     Streamlit.setComponentValue({
@@ -280,7 +282,11 @@ function SortableComponentWrapper(props: ComponentProps) {
   return (
     <div className={className}> 
       <style>{args.customStyle}</style>
-      <SortableComponent items={items} direction={args.direction} />
+      <SortableComponent
+        items={items}
+        direction={args.direction}
+        returnEvents={args.returnEvents}
+      />
     </div>
   )
 }
