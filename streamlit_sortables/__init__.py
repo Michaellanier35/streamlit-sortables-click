@@ -2,6 +2,7 @@ import os
 from typing import Any, Dict, List, Optional, TypeVar, Union
 
 import streamlit.components.v1 as components
+import streamlit as st
 
 T = TypeVar("T", str, Dict[str,Any])
 # Create a _RELEASE constant. We'll set this to False while we're developing
@@ -47,7 +48,7 @@ else:
 # `declare_component` and call it done. The wrapper allows us to customize
 # our component's API: we can pre-process its input args, post-process its
 # output value, and add a docstring for users.
-def sort_items(items: list[T],  header: Optional[str]=None, multi_containers: bool=False, direction: str="horizontal", custom_style: Optional[str]=None, key: Any=None) -> list[T]:
+def sort_items(items: list[T],  header: Optional[str]=None, multi_containers: bool=False, direction: str="horizontal", custom_style: Optional[str]=None, key: Any=None, return_events: bool=False) -> Union[list[T], Dict[str, Any]]:
     """Create a new instance of "sortable_items".
 
     Parameters
@@ -69,10 +70,12 @@ def sort_items(items: list[T],  header: Optional[str]=None, multi_containers: bo
         An optional key that uniquely identifies this component. If this is
         None, and the component's arguments are changed, the component will
         be re-mounted in the Streamlit frontend and lose its current state.
+    return_events: bool
+        When True, return both the sorted containers and the latest event.
 
     Returns
     -------
-    list[T]
+    list[T] or dict[str, Any]
         Sorted version of items. Preserves types of input items.
     """
     if not multi_containers:
@@ -87,13 +90,32 @@ def sort_items(items: list[T],  header: Optional[str]=None, multi_containers: bo
             raise ValueError('items must be list[dict[str, Any]] if multi_containers is True.')
 
     component_value = _component_func(items=items, direction=direction, customStyle=custom_style, default=items, key=key)
+    state_key = f"sortable_items_state_{key}" if key is not None else "sortable_items_state_default"
+    event: Optional[Dict[str, Any]] = None
+
+    if isinstance(component_value, dict) and component_value.get("event") == "click":
+        event = {
+            "event": "click",
+            "header": component_value.get("header"),
+            "item": component_value.get("item"),
+        }
+        containers = st.session_state.get(state_key, items)
+    else:
+        containers = component_value
+        st.session_state[state_key] = containers
 
     # We could modify the value returned from the component if we wanted.
     # There's no need to do this in our simple example - but it's an option.
+    if return_events:
+        return {
+            "containers": containers,
+            "event": event,
+        }
+
     if multi_containers:
-        return component_value
+        return containers
     else:
-        return component_value[0]['items']
+        return containers[0]['items']
 
 
 # Add some test code to play with the component while it's in development.

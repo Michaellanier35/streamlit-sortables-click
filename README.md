@@ -9,6 +9,7 @@ https://user-images.githubusercontent.com/329750/163662202-ce292fc4-2882-46ac-8c
 - **Sortable Lists**: Easily sort lists of strings or dictionaries.
 - **Multiple Containers**: Support for sorting items across multiple containers.
 - **Custom Styling**: Apply custom CSS styles to match your application's theme.
+- **Click Events**: Capture click events for items without interfering with drag-and-drop.
 
 ## Installation
 
@@ -52,6 +53,29 @@ sorted_items = sort_items(original_items, multi_containers=True)
 
 st.write(f'Original items: {original_items}')
 st.write(f'Sorted items: {sorted_items}')
+```
+
+### Handling Click Events
+
+Enable `return_events=True` to receive item click events alongside the containers.
+
+```python
+import streamlit as st
+from streamlit_sortables import sort_items
+
+original_items = [
+    {'header': 'First Container',  'items': ['A', 'B', 'C']},
+    {'header': 'Second Container', 'items': ['D', 'E', 'F']}
+]
+
+result = sort_items(original_items, multi_containers=True, return_events=True)
+
+if result["event"] and result["event"]["event"] == "click":
+    st.write(
+        f'Clicked {result["event"]["item"]} in {result["event"]["header"]}'
+    )
+
+st.write(f'Containers: {result["containers"]}')
 ```
 
 ### Theme Customization

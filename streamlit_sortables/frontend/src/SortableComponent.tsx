@@ -3,7 +3,7 @@ import {
   withStreamlitConnection,
   ComponentProps
 } from "streamlit-component-lib"
-import React, { ReactNode, useState, useEffect } from "react"
+import React, { ReactNode, useState, useEffect, useRef } from "react"
 import {
   DndContext,
   useDroppable,
@@ -74,6 +74,8 @@ function SortableComponent(props: SortableComponentProps) {
   const [items, setItems] = useState(props.items);
   const [clonedItems, setClonedItems] = useState(props.items);
   const [activeItem, setActiveItem] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragTimeoutRef = useRef<number | null>(null);
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -106,7 +108,14 @@ function SortableComponent(props: SortableComponentProps) {
               {
                 items.map(item => {
                   return (
-                    <SortableItem key={item} id={item} isActive={item === activeItem}>{item}</SortableItem>
+                    <SortableItem
+                      key={item}
+                      id={item}
+                      isActive={item === activeItem}
+                      onClick={() => handleItemClick(header, item)}
+                    >
+                      {item}
+                    </SortableItem>
                   )
                 })
               }
@@ -121,6 +130,11 @@ function SortableComponent(props: SortableComponentProps) {
   );
 
   function handleDragStart(event: any) {
+    if (dragTimeoutRef.current !== null) {
+      window.clearTimeout(dragTimeoutRef.current);
+      dragTimeoutRef.current = null;
+    }
+    setIsDragging(true);
     setActiveItem(event.active.id);
     setClonedItems(items);
   }
@@ -129,10 +143,12 @@ function SortableComponent(props: SortableComponentProps) {
     console.log('canceled')
     setActiveItem(null);
     setItems(clonedItems);
+    scheduleDragReset();
   }
 
   function handleDragEnd(event: any) {
     setActiveItem(null);
+    scheduleDragReset();
     const { active, over } = event;
     if (!over) {
       return
@@ -166,6 +182,27 @@ function SortableComponent(props: SortableComponentProps) {
         Streamlit.setFrameHeight();
       }
     }
+  }
+
+  function handleItemClick(header: string, item: string) {
+    if (isDragging) {
+      return;
+    }
+    Streamlit.setComponentValue({
+      event: "click",
+      header,
+      item
+    });
+  }
+
+  function scheduleDragReset() {
+    if (dragTimeoutRef.current !== null) {
+      window.clearTimeout(dragTimeoutRef.current);
+    }
+    dragTimeoutRef.current = window.setTimeout(() => {
+      setIsDragging(false);
+      dragTimeoutRef.current = null;
+    }, 150);
   }
 
   function handleDragOver(event: any) {
