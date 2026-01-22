@@ -12,18 +12,18 @@ export interface SortableItemProps {
   onClick?: () => void;
 }
 
-/**
- * Handle-only drag:
- * - Drag starts only from the handle (⋮⋮)
- * - Clicking the card body triggers onClick reliably
- */
-export const SortableItem: FunctionComponent<SortableItemProps> = (props) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: props.id,
-  });
-
-  // dnd-kit overlay items should not be interactive
+const SortableItem: FunctionComponent<SortableItemProps> = (props) => {
   const overlay = !!props.isOverlay;
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: props.id });
 
   const style: React.CSSProperties = {
     transform: transform ? CSS.Transform.toString(transform) : undefined,
@@ -35,36 +35,34 @@ export const SortableItem: FunctionComponent<SortableItemProps> = (props) => {
     props.isActive ? "active" : ""
   } ${isDragging ? "dragging" : ""}`;
 
-  const handleClick = () => {
-    if (overlay) return;
-    // Optional: ignore click if user is actively dragging
-    if (isDragging) return;
+  const stop = (e: MouseEvent) => e.stopPropagation();
+
+  const handleCardClick = () => {
+    if (overlay || isDragging) return;
     props.onClick?.();
   };
 
-  // Prevent handle clicks from triggering the card click
-  const stop = (e: MouseEvent) => e.stopPropagation();
-
   return (
-    <li className={className} ref={setNodeRef} style={style} onClick={handleClick}>
-      {/* Drag handle */}
+    <li className={className} ref={setNodeRef} style={style}>
       {!overlay && (
         <span
           className="drag-handle"
+          ref={setActivatorNodeRef}
           onClick={stop}
-          // Put dnd-kit drag listeners ONLY on the handle:
+          title="Drag"
+          aria-label="Drag"
           {...attributes}
           {...listeners}
-          aria-label="Drag"
-          title="Drag"
         >
           ⋮⋮
         </span>
       )}
 
-      {/* Card content (clickable) */}
-      <div className="item-content">{props.children ?? null}</div>
+      <div className="item-content" onClick={handleCardClick}>
+        {props.children ?? null}
+      </div>
     </li>
   );
 };
 
+export default SortableItem;
