@@ -8,7 +8,8 @@ export interface SortableItemProps {
   id: string,
   isActive?: boolean,
   children?: ReactNode,
-  isOverlay?: boolean
+  isOverlay?: boolean,
+  onClick?: () => void
 }
 
 export const SortableItem: FunctionComponent<SortableItemProps> = ((props) => {
@@ -46,7 +47,14 @@ export const SortableItem: FunctionComponent<SortableItemProps> = ((props) => {
     const className = `btn shadow-none sortable-item ${props.isActive ? "active" : ""} ${sortableProps.isDragging ? "dragging" : ""}`;
 
     return (
-      <li className={className} ref={sortableProps.setNodeRef} style={style} {...sortableProps.attributes} {...sortableProps.listeners}>
+      <li
+        className={className}
+        ref={sortableProps.setNodeRef}
+        style={style}
+        onClick={props.onClick}
+        {...sortableProps.attributes}
+        {...sortableProps.listeners}
+      >
         {props.children ? props.children : null}
       </li>
     )
