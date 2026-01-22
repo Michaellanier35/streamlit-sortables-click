@@ -89,7 +89,14 @@ def sort_items(items: list[T],  header: Optional[str]=None, multi_containers: bo
         if not all(map(lambda item: isinstance(item, dict), items)):
             raise ValueError('items must be list[dict[str, Any]] if multi_containers is True.')
 
-    component_value = _component_func(items=items, direction=direction, customStyle=custom_style, default=items, key=key)
+    component_value = _component_func(
+        items=items,
+        direction=direction,
+        customStyle=custom_style,
+        returnEvents=return_events,
+        default=items,
+        key=key,
+    )
     state_key = f"sortable_items_state_{key}" if key is not None else "sortable_items_state_default"
     event: Optional[Dict[str, Any]] = None
 
