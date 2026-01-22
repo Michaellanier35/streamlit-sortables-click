@@ -111,18 +111,20 @@ def sort_items(items: list[T],  header: Optional[str]=None, multi_containers: bo
         containers = component_value
         st.session_state[state_key] = containers
 
+    if multi_containers:
+        result: Union[list[T], Dict[str, Any]] = containers
+    else:
+        result = containers[0]['items']
+
     # We could modify the value returned from the component if we wanted.
     # There's no need to do this in our simple example - but it's an option.
     if return_events:
         return {
-            "containers": containers,
+            "containers": result,
             "event": event,
         }
 
-    if multi_containers:
-        return containers
-    else:
-        return containers[0]['items']
+    return result
 
 
 # Add some test code to play with the component while it's in development.
