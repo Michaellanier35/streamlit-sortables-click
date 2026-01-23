@@ -48,7 +48,16 @@ else:
 # `declare_component` and call it done. The wrapper allows us to customize
 # our component's API: we can pre-process its input args, post-process its
 # output value, and add a docstring for users.
-def sort_items(items: list[T],  header: Optional[str]=None, multi_containers: bool=False, direction: str="horizontal", custom_style: Optional[str]=None, key: Any=None, return_events: bool=False) -> Union[list[T], Dict[str, Any]]:
+def sort_items(
+    items: list[T],
+    header: Optional[str] = None,
+    multi_containers: bool = False,
+    direction: str = "horizontal",
+    custom_style: Optional[str] = None,
+    item_labels: Optional[Dict[str, str]] = None,
+    key: Any = None,
+    return_events: bool = False,
+) -> Union[list[T], Dict[str, Any]]:
     """Create a new instance of "sortable_items".
 
     Parameters
@@ -66,6 +75,8 @@ def sort_items(items: list[T],  header: Optional[str]=None, multi_containers: bo
         - '.sortable-container-header' for the header
         - '.sortable-container-boy' for the body
         - '.sortable-item' for each item
+    item_labels: dict[str, str] or None
+        Optional mapping of item IDs to display labels. Defaults to None.
     key: str or None
         An optional key that uniquely identifies this component. If this is
         None, and the component's arguments are changed, the component will
@@ -93,19 +104,17 @@ def sort_items(items: list[T],  header: Optional[str]=None, multi_containers: bo
         items=items,
         direction=direction,
         customStyle=custom_style,
+        itemLabels=item_labels,
         returnEvents=return_events,
         default=items,
         key=key,
     )
+    if return_events:
+        return component_value
+
     state_key = f"sortable_items_state_{key}" if key is not None else "sortable_items_state_default"
-    event: Optional[Dict[str, Any]] = None
 
     if isinstance(component_value, dict) and component_value.get("event") == "click":
-        event = {
-            "event": "click",
-            "header": component_value.get("header"),
-            "item": component_value.get("item"),
-        }
         containers = st.session_state.get(state_key, items)
     else:
         containers = component_value
@@ -118,12 +127,6 @@ def sort_items(items: list[T],  header: Optional[str]=None, multi_containers: bo
 
     # We could modify the value returned from the component if we wanted.
     # There's no need to do this in our simple example - but it's an option.
-    if return_events:
-        return {
-            "containers": result,
-            "event": event,
-        }
-
     return result
 
 
