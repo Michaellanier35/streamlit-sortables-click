@@ -112,6 +112,7 @@ function SortableComponent(props: SortableComponentProps) {
   }
 
   function handleDragStart(event: any) {
+    console.log("dragStart", event.active?.id);
     if (dragTimeoutRef.current !== null) {
       window.clearTimeout(dragTimeoutRef.current);
       dragTimeoutRef.current = null;
@@ -128,6 +129,7 @@ function SortableComponent(props: SortableComponentProps) {
   }
 
   function handleDragEnd(event: any) {
+    console.log("dragEnd", event.active?.id);
     setActiveItem(null);
     scheduleDragReset();
 
@@ -159,6 +161,7 @@ function SortableComponent(props: SortableComponentProps) {
   }
 
   function handleDragOver(event: any) {
+    console.log("dragOver", event.active?.id);
     const { active, over } = event;
     if (!over) return;
 
@@ -197,6 +200,7 @@ function SortableComponent(props: SortableComponentProps) {
   function handleItemClick(header: string, item: string) {
     if (isDragging || !props.returnEvents) return;
 
+    console.log("click", header, item);
     Streamlit.setComponentValue({
       event: "click",
       header,
@@ -258,4 +262,3 @@ function SortableComponentWrapper(props: ComponentProps) {
 }
 
 export default withStreamlitConnection(SortableComponentWrapper);
-
