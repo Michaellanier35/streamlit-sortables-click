@@ -8,6 +8,8 @@ T = TypeVar("T", str, Dict[str, Any])
 
 _RELEASE = True
 
+# build-marker: force new SHA
+
 if not _RELEASE:
     _component_func = components.declare_component(
         "sortable_items",
