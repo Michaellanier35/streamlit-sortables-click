@@ -1,53 +1,24 @@
 import os
-from typing import Any, Dict, List, Optional, TypeVar, Union
+from typing import Any, Dict, Optional, TypeVar, Union
 
 import streamlit.components.v1 as components
 import streamlit as st
 
-T = TypeVar("T", str, Dict[str,Any])
-# Create a _RELEASE constant. We'll set this to False while we're developing
-# the component, and True when we're ready to package and distribute it.
-# (This is, of course, optional - there are innumerable ways to manage your
-# release process.)
+T = TypeVar("T", str, Dict[str, Any])
+
 _RELEASE = True
-
-# Declare a Streamlit component. `declare_component` returns a function
-# that is used to create instances of the component. We're naming this
-# function "_component_func", with an underscore prefix, because we don't want
-# to expose it directly to users. Instead, we will create a custom wrapper
-# function, below, that will serve as our component's public API.
-
-# It's worth noting that this call to `declare_component` is the
-# *only thing* you need to do to create the binding between Streamlit and
-# your component frontend. Everything else we do in this file is simply a
-# best practice.
-
 
 if not _RELEASE:
     _component_func = components.declare_component(
-        # We give the component a simple, descriptive name ("my_component"
-        # does not fit this bill, so please choose something better for your
-        # own component :)
-        "sort_items",
-        # Pass `url` here to tell Streamlit that the component will be served
-        # by the local dev server that you run via `npm run start`.
-        # (This is useful while your component is in development.)
+        "sortable_items",
         url="http://localhost:3001",
     )
 else:
-    # When we're distributing a production version of the component, we'll
-    # replace the `url` param with `path`, and point it to to the component's
-    # build directory:
     parent_dir = os.path.dirname(os.path.abspath(__file__))
     build_dir = os.path.join(parent_dir, "frontend/build")
     _component_func = components.declare_component("sortable_items", path=build_dir)
 
 
-# Create a wrapper function for the component. This is an optional
-# best practice - we could simply expose the component function returned by
-# `declare_component` and call it done. The wrapper allows us to customize
-# our component's API: we can pre-process its input args, post-process its
-# output value, and add a docstring for users.
 def sort_items(
     items: list[T],
     header: Optional[str] = None,
@@ -58,205 +29,95 @@ def sort_items(
     key: Any = None,
     return_events: bool = False,
 ) -> Union[list[T], Dict[str, Any]]:
-    """Create a new instance of "sortable_items".
-
-    Parameters
-    ----------
-    items : list[str] or dict[str, list[str]]
-    header: str or None
-    multi_containers: bool
-    direction: str
-    custom_style: str or None
-        Custom CSS styles to apply to the component. Defaults to None.
-        The following selectors can be used:
-        - '.sortable-component' for the main container
-        - '.sortable-component.vertical' if direction is 'vertical'
-        - '.sortable-container' for each container if multi_containers is True
-        - '.sortable-container-header' for the header
-        - '.sortable-container-boy' for the body
-        - '.sortable-item' for each item
-    item_labels: dict[str, str] or None
-        Optional mapping of item IDs to display labels. Defaults to None.
-    key: str or None
-        An optional key that uniquely identifies this component. If this is
-        None, and the component's arguments are changed, the component will
-        be re-mounted in the Streamlit frontend and lose its current state.
-    return_events: bool
-        When True, return both the sorted containers and the latest event.
-
-    Returns
-    -------
-    list[T] or dict[str, Any]
-        Sorted version of items. Preserves types of input items.
     """
-    if not multi_containers:
-        if not isinstance(header, str) and header is not None:
-            raise ValueError('header argument must be str or None if multi_containers is False.')
-        if not all(map(lambda item: isinstance(item, str), items)):
-            raise ValueError('items must be list[str] if multi_containers is False.')
+    Create a new instance of the sortable component.
 
-        items = [{'header': header, 'items': items}]
+    If return_events=True, returns:
+      {
+        "containers": <container list>,
+        "event": <event dict or None>
+      }
+
+    Otherwise returns:
+      - list[str] (single container mode)
+      - list[dict] (multi container mode)
+    """
+
+    # Normalize into container format expected by the frontend
+    if not multi_containers:
+        if header is not None and not isinstance(header, str):
+            raise ValueError("header must be str or None when multi_containers=False")
+        if not all(isinstance(item, str) for item in items):
+            raise ValueError("items must be list[str] when multi_containers=False")
+        containers_in = [{"header": header or "", "items": items}]
     else:
-        if not all(map(lambda item: isinstance(item, dict), items)):
-            raise ValueError('items must be list[dict[str, Any]] if multi_containers is True.')
+        if not all(isinstance(item, dict) for item in items):
+            raise ValueError("items must be list[dict[str, Any]] when multi_containers=True")
+        containers_in = items  # type: ignore[assignment]
 
     component_value = _component_func(
-        items=items,
+        items=containers_in,
         direction=direction,
         customStyle=custom_style,
         itemLabels=item_labels,
         returnEvents=return_events,
-        default=items,
+        default=containers_in,
         key=key,
     )
-    if return_events:
-        return component_value
 
     state_key = f"sortable_items_state_{key}" if key is not None else "sortable_items_state_default"
 
+    # --- return_events mode ---
+    if return_events:
+        event = None
+        containers_out = containers_in
+
+        # Frontend click events are dicts
+        if isinstance(component_value, dict) and component_value.get("event") == "click":
+            event = {
+                "event": "click",
+                "header": component_value.get("header"),
+                "item": component_value.get("item"),
+            }
+            # Prefer containers provided by frontend; fallback to last known state
+            containers_out = component_value.get("containers") or st.session_state.get(state_key, containers_in)
+        else:
+            # Drag / reorder returns containers list
+            if isinstance(component_value, list):
+                containers_out = component_value
+            else:
+                containers_out = st.session_state.get(state_key, containers_in)
+
+        # Persist last known containers so click can reference them
+        st.session_state[state_key] = containers_out
+
+        return {"containers": containers_out, "event": event}
+
+    # --- legacy mode (no events) ---
     if isinstance(component_value, dict) and component_value.get("event") == "click":
-        containers = st.session_state.get(state_key, items)
+        # If caller didn't request events, ignore click and return last known containers
+        containers_out = st.session_state.get(state_key, containers_in)
     else:
-        containers = component_value
-        st.session_state[state_key] = containers
+        containers_out = component_value
+        st.session_state[state_key] = containers_out
 
     if multi_containers:
-        result: Union[list[T], Dict[str, Any]] = containers
-    else:
-        result = containers[0]['items']
-
-    # We could modify the value returned from the component if we wanted.
-    # There's no need to do this in our simple example - but it's an option.
-    return result
+        return containers_out
+    return containers_out[0]["items"]
 
 
-# Add some test code to play with the component while it's in development.
-# During development, we can run this just as we would any other Streamlit
-# app: `$ streamlit run my_component/__init__.py`
+# Dev-only test harness
 if not _RELEASE:
-    import streamlit as st
+    st.title("Sortables (dev)")
 
-    st.title('Sortables')
+    st.write("Sort items in a single container.")
+    items1 = ["item1", "item2", "item3"]
+    st.write(sort_items(items1))
 
-    st.write('Sort items in a single container.')
-    items = ['item1', 'item2', 'item3']
-    
-    sorted_items = sort_items(items)
-    st.write(sorted_items)
-
-
-    st.write('----')
-    st.write('Sort items in multiple containers.')
-    items = [
-        {'header': 'container1', 'items': ['item1', 'item2', 'item3']},
-        {'header': 'container2', 'items': ['item4', 'item5', 'item6']},
+    st.write("---")
+    st.write("Sort items in multiple containers.")
+    items2 = [
+        {"header": "container1", "items": ["item1", "item2", "item3"]},
+        {"header": "container2", "items": ["item4", "item5", "item6"]},
     ]
-    sorted_items = sort_items(items, multi_containers=True)
-    st.write(sorted_items)
-
-    st.write('----')
-    st.write('Lots of items in a single container.')
-    items = [
-        {'header': 'header1', 'items': ['item1', 'item2', 'item3', 'item4', 'item5', 'item6', 'item7', 'item8', 'item9', 'item10', 'item11', 'item12', 'item13']},
-    ]
-    sorted_items = sort_items(items, multi_containers=True)
-    st.write(sorted_items)
-
-    st.write('----')
-    st.write('Sort items in multiple containers with vertical direction.')
-    items = [
-        {'header': 'container1', 'items': ['item1', 'item2', 'item3']},
-        {'header': 'container2', 'items': ['item4', 'item5', 'item6']},
-    ]
-    sorted_items = sort_items(items, multi_containers=True, direction="vertical")
-    st.write(sorted_items)
-
-    st.write('----')
-    st.write('Sort items in many containers with vertical direction.')
-    items = [
-        {'header': 'container1', 'items': ['item1', 'item2', 'item3']},
-        {'header': 'container2', 'items': ['item4', 'item5', 'item6']},
-        {'header': 'container3', 'items': ['item7', 'item8', 'item9']},
-        {'header': 'container4', 'items': ['item10', 'item11', 'item12']},
-        {'header': 'container5', 'items': ['item13', 'item14', 'item15']},
-        {'header': 'container6', 'items': ['item16', 'item17', 'item18']},
-    ]
-    
-    sorted_items = sort_items(items, multi_containers=True, direction="vertical")
-    st.write(sorted_items)
-
-    st.write('----')
-    st.write('Sort items with custom style.')
-    items = [
-        {'header': 'container1', 'items': ['item1', 'item2', 'item3']},
-        {'header': 'container2', 'items': ['item4', 'item5', 'item6']},
-        {'header': 'container3', 'items': ['item7', 'item8', 'item9']},
-    ]
-    custom_style = """
-    .sortable-component {
-        border: 3px solid #6495ED;
-        border-radius: 10px;
-        padding: 5px;
-    }
-    .sortable-container {
-        background-color: #F0F0F0;
-    }
-    .sortable-container-header {
-        background-color: #FFBFDF;
-        padding-left: 1rem;
-    }
-    .sortable-container-body {
-        background-color: #F0F0F0;
-    }
-    .sortable-item, .sortable-item:hover {
-        background-color: #6495ED;
-        font-color: #FFFFFF;
-        font-weight: bold;
-    }
-    """
-    sorted_items = sort_items(items, multi_containers=True, custom_style=custom_style)
-    
-    st.write(sorted_items)
-
-    st.write('----')
-    st.write('Advanced custom style.')
-    original_items = [
-        {'header': 'first container',  'items': ['A', 'B', 'C']},
-        {'header': 'second container', 'items': ['D', 'E', 'F']}
-    ]
-
-    custom_style = """
-    .sortable-component {
-        border: 3px solid #6495ED;
-        border-radius: 10px;
-        padding: 5px;
-    }
-    .sortable-container {
-        background-color: #F0F0F0;
-        counter-reset: item;
-    }
-    .sortable-container-header {
-        background-color: #FFBFDF;
-        padding-left: 1rem;
-    }
-    .sortable-container-body {
-        background-color: #F0F0F0;
-    }
-    .sortable-item, .sortable-item:hover {
-        background-color: #6495ED;
-        font-color: #FFFFFF;
-        font-weight: bold;
-    }
-    .sortable-item::before {
-        content: counter(item) ". ";
-        counter-increment: item;
-    }
-    .sortable-item.dragging::before {
-        content: none;
-        counter-increment: none;
-    }
-    """
-    sorted_items = sort_items(original_items, multi_containers=True, custom_style=custom_style)
-
-    st.write(f'original_items: {original_items}')
-    st.write(f'sorted_items: {sorted_items}')
+    st.write(sort_items(items2, multi_containers=True))
