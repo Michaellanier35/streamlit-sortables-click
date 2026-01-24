@@ -164,7 +164,9 @@ Contributions are welcome! Please submit issues or pull requests for any bugs or
 
 ## Local rebuild steps
 
-The frontend bundle is committed for Streamlit Cloud. Build it locally and commit the output when you change the frontend.
+The frontend bundle is committed for Streamlit Cloud. The `streamlit_sortables/frontend/build` folder must exist
+in the repo, and `pyproject.toml` is configured to include it in the wheel so Streamlit Cloud can load the
+component. Build it locally and commit the output when you change the frontend.
 
 ```bash
 cd streamlit_sortables/frontend
