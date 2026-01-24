@@ -162,6 +162,20 @@ st.write(f'Sorted items: {sorted_items}')
 
 Contributions are welcome! Please submit issues or pull requests for any bugs or feature requests.
 
+## Local rebuild steps
+
+The frontend bundle is committed for Streamlit Cloud. Build it locally and commit the output when you change the frontend.
+
+```bash
+cd streamlit_sortables/frontend
+npm ci
+npm run build
+cd ../..
+git add -A
+git commit -m "Rebuild frontend bundle"
+git push
+```
+
 ## License
 
 This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.

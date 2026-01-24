@@ -30,6 +30,7 @@ def sort_items(
     item_labels: Optional[Dict[str, str]] = None,
     key: Any = None,
     return_events: bool = False,
+    returnEvents: Optional[bool] = None,
 ) -> Union[list[T], Dict[str, Any]]:
     """
     Create a new instance of the sortable component.
@@ -56,6 +57,9 @@ def sort_items(
         if not all(isinstance(item, dict) for item in items):
             raise ValueError("items must be list[dict[str, Any]] when multi_containers=True")
         containers_in = items  # type: ignore[assignment]
+
+    if returnEvents is not None:
+        return_events = bool(returnEvents)
 
     component_value = _component_func(
         items=containers_in,
