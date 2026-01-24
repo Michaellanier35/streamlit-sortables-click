@@ -35,6 +35,7 @@ interface StreamlitArguments {
   direction?: Direction;
   items: ContainerDescription[];
   customStyle?: string;
+  itemLabels?: Record<string, string>;
   returnEvents?: boolean;
 }
 
@@ -65,6 +66,7 @@ function Container(props: ContainerProps) {
 interface SortableComponentProps {
   direction?: Direction;
   items: ContainerDescription[];
+  itemLabels?: Record<string, string>;
   returnEvents?: boolean;
 }
 
@@ -111,8 +113,12 @@ function SortableComponent(props: SortableComponentProps) {
     });
   }
 
+  function renderLabel(itemId: string | null) {
+    if (!itemId) return "";
+    return props.itemLabels?.[itemId] ?? itemId;
+  }
+
   function handleDragStart(event: any) {
-    console.log("dragStart", event.active?.id);
     if (dragTimeoutRef.current !== null) {
       window.clearTimeout(dragTimeoutRef.current);
       dragTimeoutRef.current = null;
@@ -129,39 +135,39 @@ function SortableComponent(props: SortableComponentProps) {
   }
 
   function handleDragEnd(event: any) {
-    console.log("dragEnd", event.active?.id);
     setActiveItem(null);
     scheduleDragReset();
 
     const { active, over } = event;
-    if (!over) return;
+    let nextItems = items;
 
-    const activeContainerIndex = findContainer(active.id);
-    const overContainerIndex = findContainer(over.id);
-    if (activeContainerIndex < 0 || overContainerIndex < 0) return;
-
-    // same container reorder
-    if (activeContainerIndex === overContainerIndex) {
-      const container = items[activeContainerIndex];
-      const activeIdx = container.items.indexOf(active.id);
-      const overIdx = container.items.indexOf(over.id);
-      if (activeIdx < 0 || overIdx < 0) return;
-
-      const newItems = items.map((c, idx) =>
-        idx === activeContainerIndex ? { header: c.header, items: arrayMove(c.items, activeIdx, overIdx) } : c
-      );
-
-      setItems(newItems);
-
-      if (!isSameOrder(clonedItems, newItems)) {
-        Streamlit.setComponentValue(newItems);
-        Streamlit.setFrameHeight();
+    if (over) {
+      const activeContainerIndex = findContainer(active.id);
+      const overContainerIndex = findContainer(over.id);
+      if (activeContainerIndex >= 0 && overContainerIndex >= 0) {
+        // same container reorder
+        if (activeContainerIndex === overContainerIndex) {
+          const container = items[activeContainerIndex];
+          const activeIdx = container.items.indexOf(active.id);
+          const overIdx = container.items.indexOf(over.id);
+          if (activeIdx >= 0 && overIdx >= 0) {
+            nextItems = items.map((c, idx) =>
+              idx === activeContainerIndex ? { header: c.header, items: arrayMove(c.items, activeIdx, overIdx) } : c
+            );
+          }
+        }
       }
+    }
+
+    setItems(nextItems);
+
+    if (!isSameOrder(clonedItems, nextItems)) {
+      Streamlit.setComponentValue(nextItems);
+      Streamlit.setFrameHeight();
     }
   }
 
   function handleDragOver(event: any) {
-    console.log("dragOver", event.active?.id);
     const { active, over } = event;
     if (!over) return;
 
@@ -200,7 +206,6 @@ function SortableComponent(props: SortableComponentProps) {
   function handleItemClick(header: string, item: string) {
     if (isDragging || !props.returnEvents) return;
 
-    console.log("click", header, item);
     Streamlit.setComponentValue({
       event: "click",
       header,
@@ -227,7 +232,7 @@ function SortableComponent(props: SortableComponentProps) {
               isActive={item === activeItem}
               onClick={() => handleItemClick(header, item)}
             >
-              {item}
+              {renderLabel(item)}
             </SortableItem>
           ))}
         </Container>
@@ -235,7 +240,7 @@ function SortableComponent(props: SortableComponentProps) {
 
       <DragOverlay>
         <SortableItem id="__overlay__" isOverlay={true}>
-          {activeItem}
+          {renderLabel(activeItem)}
         </SortableItem>
       </DragOverlay>
     </DndContext>
@@ -255,6 +260,7 @@ function SortableComponentWrapper(props: ComponentProps) {
       <SortableComponent
         items={args.items}
         direction={args.direction}
+        itemLabels={args.itemLabels}
         returnEvents={args.returnEvents}
       />
     </div>

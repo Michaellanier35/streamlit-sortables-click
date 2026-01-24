@@ -46,7 +46,7 @@ const SortableItem: FunctionComponent<SortableItemProps> = (props) => {
     <li className={className} ref={setNodeRef} style={style}>
       {!overlay && (
         <span
-          className="drag-handle"
+          className="drag-handle cc-handle"
           ref={setActivatorNodeRef}
           onClick={stop}
           title="Drag"

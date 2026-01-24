@@ -9,6 +9,8 @@ __pycache__/
 # Distribution / packaging
 .Python
 build/
+!streamlit_sortables/frontend/build/
+!streamlit_sortables/frontend/build/**
 develop-eggs/
 dist/
 downloads/
