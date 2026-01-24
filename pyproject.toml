@@ -1,6 +1,11 @@
 [tool.poetry]
 name = "streamlit-sortables"
 version = "0.3.1"
+
+include = [
+  "streamlit_sortables/frontend/build/**"
+]
+
 description = "A Streamlit component to provide sortable list."
 license = "Apache License (2.0)"
 authors = ["ohtaman <ohtamans@gmail.com>"]
